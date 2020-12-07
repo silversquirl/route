@@ -154,17 +154,72 @@ func buildRouteRegex(format string) (*regexp.Regexp, error) {
 type parser func(string) (interface{}, error)
 
 var parsers = map[reflect.Type]parser{
+	// string
 	reflect.TypeOf(""): func(s string) (interface{}, error) {
 		return s, nil
 	},
+
+	// bool
 	reflect.TypeOf(true): func(s string) (interface{}, error) {
 		return strconv.ParseBool(s)
 	},
-	reflect.TypeOf(0): func(s string) (interface{}, error) {
-		return strconv.Atoi(s)
+
+	// complex and float
+	reflect.TypeOf(0i): func(s string) (interface{}, error) {
+		return strconv.ParseComplex(s, 128)
+	},
+	reflect.TypeOf(complex64(0i)): func(s string) (interface{}, error) {
+		return strconv.ParseComplex(s, 64)
 	},
 	reflect.TypeOf(0.0): func(s string) (interface{}, error) {
 		return strconv.ParseFloat(s, 64)
+	},
+	reflect.TypeOf(float32(0.0)): func(s string) (interface{}, error) {
+		return strconv.ParseFloat(s, 32)
+	},
+
+	// int
+	reflect.TypeOf(0): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 0)
+		return int(i), err
+	},
+	reflect.TypeOf(int8(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 8)
+		return int8(i), err
+	},
+	reflect.TypeOf(int16(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 16)
+		return int16(i), err
+	},
+	reflect.TypeOf(int32(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 32)
+		return int32(i), err
+	},
+	reflect.TypeOf(int64(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 64)
+		return int64(i), err
+	},
+
+	// uint
+	reflect.TypeOf(uint(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseUint(s, 0, 0)
+		return uint(i), err
+	},
+	reflect.TypeOf(uint8(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 8)
+		return uint8(i), err
+	},
+	reflect.TypeOf(uint16(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 16)
+		return uint16(i), err
+	},
+	reflect.TypeOf(uint32(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 32)
+		return uint32(i), err
+	},
+	reflect.TypeOf(uint64(0)): func(s string) (interface{}, error) {
+		i, err := strconv.ParseInt(s, 0, 64)
+		return uint64(i), err
 	},
 }
 

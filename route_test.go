@@ -109,3 +109,34 @@ func TestSlashRoute(t *testing.T) {
 	testRequest(t, r, httptest.NewRequest("GET", "/quux/frob", nil), goodRoute{"frob"})
 	testRequest(t, r, httptest.NewRequest("GET", "/quux/frob/", nil), goodRoute{"frob"})
 }
+
+func TestParsedRoute(t *testing.T) {
+	r := NewRouter()
+
+	// TODO: test complex
+	// TODO: test other sizes
+	type boolRoute struct{ V bool }
+	type complexRoute struct{ V complex128 }
+	type floatRoute struct{ V float64 }
+	type intRoute struct{ V int }
+
+	type uintRoute struct{ V uint }
+
+	h := testHandler(t)
+	r.HandleFunc("/{}", boolRoute{}, h)
+	r.HandleFunc("/{}", floatRoute{}, h)
+	r.HandleFunc("/{}", intRoute{}, h)
+	r.HandleFunc("/{}", uintRoute{}, h)
+
+	testRequest(t, r, httptest.NewRequest("GET", "/false", nil), boolRoute{false})
+	testRequest(t, r, httptest.NewRequest("GET", "/true", nil), boolRoute{true})
+
+	testRequest(t, r, httptest.NewRequest("GET", "/1.3", nil), floatRoute{1.3})
+	testRequest(t, r, httptest.NewRequest("GET", "/1e-17", nil), floatRoute{1e-17})
+
+	testRequest(t, r, httptest.NewRequest("GET", "/-7", nil), intRoute{-7})
+	testRequest(t, r, httptest.NewRequest("GET", "/-42", nil), intRoute{-42})
+
+	testRequest(t, r, httptest.NewRequest("GET", "/0", nil), uintRoute{0})
+	testRequest(t, r, httptest.NewRequest("GET", "/31", nil), uintRoute{31})
+}
