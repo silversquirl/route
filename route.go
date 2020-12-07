@@ -17,6 +17,8 @@ var ErrTooMany = errors.New("Invalid route: More segments than struct fields")
 var ErrType = errors.New("Invalid route: Type cannot be parsed")
 var ErrMatch = errors.New("Path does not match route")
 
+type PathRoute struct{ Path string }
+
 type Router struct {
 	routes []routeInfo
 }
@@ -33,17 +35,25 @@ func NewRouter() *Router {
 }
 
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := r.URL.Path
+	// If there is a PathRoute stored on the request, use that instead
+	if route, ok := r.Context().Value("route").(PathRoute); ok {
+		path = "/" + route.Path
+	}
+	// Ensure the path ends with a slash
+	path += "/"
+
 	// Iterate backwards so more recently added routes take preference
 	for i := len(router.routes) - 1; i >= 0; i-- {
-		if router.routes[i].serve(w, r) {
+		if router.routes[i].serve(w, r, path) {
 			return
 		}
 	}
 	http.NotFound(w, r)
 }
 
-func (route *routeInfo) serve(w http.ResponseWriter, r *http.Request) (ok bool) {
-	match := route.re.FindStringSubmatch(r.URL.Path + "/")
+func (route *routeInfo) serve(w http.ResponseWriter, r *http.Request, path string) (ok bool) {
+	match := route.re.FindStringSubmatch(path)
 	if match == nil {
 		return false
 	}
@@ -90,6 +100,13 @@ func (router *Router) Handle(route string, routeStruct interface{}, h http.Handl
 
 func (router *Router) HandleFunc(route string, routeStruct interface{}, h func(http.ResponseWriter, *http.Request)) {
 	router.Handle(route, routeStruct, http.HandlerFunc(h))
+}
+
+func (router *Router) Child(prefix string) (child *Router) {
+	child = NewRouter()
+	route := strings.TrimRight(prefix, "/") + "/{/?}"
+	router.Handle(route, PathRoute{}, child)
+	return child
 }
 
 func buildRouteRegex(format string) (*regexp.Regexp, error) {

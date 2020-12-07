@@ -33,6 +33,10 @@ func testRequest(t *testing.T, h http.Handler, r *http.Request, expect interface
 	w := httptest.NewRecorder()
 	h.ServeHTTP(w, r)
 
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status code 200, got %d", w.Code)
+	}
+
 	v := reflect.ValueOf(expect)
 	ty := v.Type()
 
@@ -139,4 +143,24 @@ func TestParsedRoute(t *testing.T) {
 
 	testRequest(t, r, httptest.NewRequest("GET", "/0", nil), uintRoute{0})
 	testRequest(t, r, httptest.NewRequest("GET", "/31", nil), uintRoute{31})
+}
+
+func TestChildRouter(t *testing.T) {
+	r := NewRouter()
+
+	type rootRoute struct{ V string }
+	type childRoute struct{ V string }
+
+	h := testHandler(t)
+	r.HandleFunc("/{}", rootRoute{}, h)
+	r2 := r.Child("/foo")
+	r2.HandleFunc("/{}", childRoute{}, h)
+	r2.HandleFunc("/bar/{}", childRoute{}, h)
+	r.HandleFunc("/{}/bar", rootRoute{}, h)
+
+	testRequest(t, r, httptest.NewRequest("GET", "/baz", nil), rootRoute{"baz"})
+	testRequest(t, r, httptest.NewRequest("GET", "/foo/baz", nil), childRoute{"baz"})
+	testRequest(t, r, httptest.NewRequest("GET", "/foo/bar/baz/", nil), childRoute{"baz"})
+	testRequest(t, r, httptest.NewRequest("GET", "/baz/bar", nil), rootRoute{"baz"})
+	testRequest(t, r, httptest.NewRequest("GET", "/foo/bar", nil), rootRoute{"foo"})
 }
