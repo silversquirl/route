@@ -164,3 +164,10 @@ func TestChildRouter(t *testing.T) {
 	testRequest(t, r, httptest.NewRequest("GET", "/baz/bar", nil), rootRoute{"baz"})
 	testRequest(t, r, httptest.NewRequest("GET", "/foo/bar", nil), rootRoute{"foo"})
 }
+
+func TestNilRouteStruct(t *testing.T) {
+	r := NewRouter()
+	h := testHandler(t)
+	r.HandleFunc("/", nil, h)
+	testRequest(t, r, httptest.NewRequest("GET", "/", nil), struct{}{})
+}

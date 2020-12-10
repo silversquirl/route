@@ -80,6 +80,9 @@ func (router *Router) Handle(route string, routeStruct interface{}, h http.Handl
 	}
 
 	ty := reflect.TypeOf(routeStruct)
+	if ty == nil {
+		ty = reflect.TypeOf(struct{}{})
+	}
 
 	nfmt := re.NumSubexp()
 	narg := ty.NumField()
