@@ -10,15 +10,19 @@ import (
 	"strings"
 )
 
-var ErrInvalidSpecifier = errors.New("Invalid route: Invalid format specifier")
-var ErrUnmatchedBrace = errors.New("Invalid route: Unmatched brace")
-var ErrTooFew = errors.New("Invalid route: Less segments than struct fields")
-var ErrTooMany = errors.New("Invalid route: More segments than struct fields")
-var ErrType = errors.New("Invalid route: Type cannot be parsed")
-var ErrMatch = errors.New("Path does not match route")
+// In the event of an invalid route string, Router.Handle may panic with one of the following errors.
+var (
+	ErrInvalidSpecifier = errors.New("Invalid route: Invalid format specifier")
+	ErrUnmatchedBrace   = errors.New("Invalid route: Unmatched brace")
+	ErrTooFew           = errors.New("Invalid route: Less segments than struct fields")
+	ErrTooMany          = errors.New("Invalid route: More segments than struct fields")
+	ErrType             = errors.New("Invalid route: Type cannot be parsed")
+)
 
+// PathRoute is a simple route struct that stores only a path. See Router.ServeHTTP for more information.
 type PathRoute struct{ Path string }
 
+// Router dispatches HTTP requests to a set of routes.
 type Router struct {
 	routes []routeInfo
 }
@@ -30,10 +34,13 @@ type routeInfo struct {
 	ps []parser
 }
 
+// NewRouter creates a new Router with no parent.
 func NewRouter() *Router {
 	return &Router{}
 }
 
+// ServeHTTP handles a request, dispatching to the correct route.
+// If there is a PathRoute attached to the request, the Path within that will be used instead of r.URL.Path
 func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path
 	// If there is a PathRoute stored on the request, use that instead
@@ -52,6 +59,7 @@ func (router *Router) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	http.NotFound(w, r)
 }
 
+// Attempt to match and serve the route.
 func (route *routeInfo) serve(w http.ResponseWriter, r *http.Request, path string) (ok bool) {
 	match := route.re.FindStringSubmatch(path)
 	if match == nil {
@@ -73,6 +81,12 @@ func (route *routeInfo) serve(w http.ResponseWriter, r *http.Request, path strin
 	return true
 }
 
+// Handle adds a new route to the router.
+// The routeStruct's type should have as many fields as there are placeholders in the route.
+// A nil routeStruct is equivalent to struct{}{}.
+//
+// A value of the same type as routeStruct, filled out with the information stored in the accessed
+// path, can be retrieved within the handler using the request's Context, with the key "route".
 func (router *Router) Handle(route string, routeStruct interface{}, h http.Handler) {
 	re, err := buildRouteRegex(route)
 	if err != nil {
@@ -101,10 +115,12 @@ func (router *Router) Handle(route string, routeStruct interface{}, h http.Handl
 	router.routes = append(router.routes, routeInfo{h, re, ty, parsers})
 }
 
+// HandleFunc adds a new route to the router using a handler function. See Handle for more information.
 func (router *Router) HandleFunc(route string, routeStruct interface{}, h func(http.ResponseWriter, *http.Request)) {
 	router.Handle(route, routeStruct, http.HandlerFunc(h))
 }
 
+// Child creates a new router that handles all routes with the specified prefix within the parent.
 func (router *Router) Child(prefix string) (child *Router) {
 	child = NewRouter()
 	route := strings.TrimRight(prefix, "/") + "/{/?}"
